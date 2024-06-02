@@ -15,7 +15,7 @@ type Map<K, V> = std::collections::HashMap<K, V>;
 /// It is useful for reading Noita XML, but if you need to modify the
 /// element, you'd want to convert it to [Element] using
 /// [into_owned](ElementRef::into_owned).
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ElementRef<'s> {
     pub name: &'s str,
     pub attributes: Map<&'s str, &'s str>,
@@ -48,7 +48,7 @@ impl<'s> ElementRef<'s> {
 }
 
 /// An owned XML element, easy to create and/or manipulate.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Element {
     pub name: String,
     pub attributes: Map<String, String>,
