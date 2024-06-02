@@ -37,6 +37,7 @@ dependencies = [
 name = "nxml-rs-macros"
 version = "0.2.0"
 dependencies = [
+ "nxml-rs",
  "proc-macro2",
  "quote",
  "syn",

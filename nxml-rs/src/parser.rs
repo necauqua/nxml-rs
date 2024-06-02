@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use thiserror::Error;
 
 use crate::{
-    element::{Element, ElementRef},
+    element::ElementRef,
     tokenizer::{Position, Token, Tokenizer},
 };
 
@@ -32,26 +32,14 @@ pub struct NxmlError<'s> {
     pub at: Position,
 }
 
-impl ElementRef<'_> {
-    pub fn parse(s: &str) -> Result<ElementRef, NxmlError> {
-        Parser::new(s).parse()
-    }
-
-    pub fn parse_lenient(s: &str) -> (ElementRef, Vec<NxmlError>) {
-        let mut parser = Parser::new(s).lenient();
-        let element = parser.parse().expect("lenient parser never errors");
-        (element, parser.errors)
-    }
+pub fn parse(s: &str) -> Result<ElementRef, NxmlError> {
+    Parser::new(s).parse()
 }
 
-impl Element {
-    pub fn parse(s: &str) -> Result<Self, NxmlError> {
-        ElementRef::parse(s).map(ElementRef::into_owned)
-    }
-    pub fn parse_lenient(s: &str) -> (Self, Vec<NxmlError>) {
-        let (element, errors) = ElementRef::parse_lenient(s);
-        (element.into_owned(), errors)
-    }
+pub fn parse_lenient(s: &str) -> (ElementRef, Vec<NxmlError>) {
+    let mut parser = Parser::new(s).lenient();
+    let element = parser.parse().expect("lenient parser never errors");
+    (element, parser.errors)
 }
 
 #[derive(Debug)]

@@ -28,8 +28,7 @@ of how noita parser handles that anyway, handled with `Cow`.
 ```rust
 use nxml_rs::*;
 
-// Element::parse_* is a shortcut for ElementRef::parse_* followed by into_owned
-let (mut entity, _errors) = Element::parse_lenient(r#"
+let mut entity = nxml_rs::parse(r#"
     <Entity>
         <LuaComponent
             script_source_file="mods/blah/etc/test.lua"
@@ -37,35 +36,53 @@ let (mut entity, _errors) = Element::parse_lenient(r#"
         </LuaComponent>
         <TestComponent blah="blah" />
     </Entity>
-"#);
+"#).unwrap();
 
-// Some sugar, >> is alias for .child("name").unwrap(), and << is same for .attr
-assert_eq!("-1", &entity >> "LuaComponent" << "execute_every_n_frame");
+// A little DSL sugar thing, / is alias for .child("name").unwrap(),
+// and % is for .attr("name").unwrap()
+assert_eq!("-1", &entity / "LuaComponent" % "execute_every_n_frame");
 
 let a_lot = 0;
 let speed = 0;
 
-// make a new element through the builder
+// Make a new element with builder methods
 let extra = Element::new("ElectricityComponent")
     .with_attr("energy", a_lot)
     .with_attr("probability_to_heat", "0")
     .with_attr("speed", speed);
 
-// or use the macro
+// But it's more convenient to use the macro, the builder is rarely ever
+// needed (and the following macro expands to above code)
 let extra = nxml! {
     <ElectricityComponent energy={a_lot} probability_to_heat="0" {speed} />
 };
 
-// A modification - entity.children is just a vec ¯\_(ツ)_/¯
-entity.children.insert(1, extra);
+// Clone everything into owned strings, making it a bit nicer to work with
+let mut owned = entity.to_owned();
 
-assert_eq!(entity.to_string(), r#"
+// A modification - entity.children is just a vec ¯\_(ツ)_/¯
+owned.children.insert(1, extra);
+
+// Still has the sugar
+assert_eq!("0", &owned / "ElectricityComponent" % "probability_to_heat");
+
+// And can be rendered back into a string (.display() making it pretty-printed)
+assert_eq!(owned.display().to_string(), r#"
 <Entity>
     <LuaComponent script_source_file="mods/blah/etc/test.lua" execute_every_n_frame="-1"/>
     <ElectricityComponent energy="0" probability_to_heat="0" speed="0"/>
     <TestComponent blah="blah"/>
 </Entity>
 "#.trim());
+
+// DSL is defined for both of them, and / works with &mut
+(&mut owned / "LuaComponent").remove_attr("execute_every_n_frame");
+(&mut entity / "LuaComponent").remove_attr("execute_every_n_frame");
+
+entity.children.remove(1);
+
+// The EntityRef can be rendered too
+assert_eq!(entity.to_string(), "<Entity><LuaComponent script_source_file=\"mods/blah/etc/test.lua\"/></Entity>");
 ```
 
 ### Cargo features
