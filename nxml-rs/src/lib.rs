@@ -1,4 +1,4 @@
-#![doc = include_str!("../../readme.md")]
+#![doc = include_str!(env!("README_PATH"))]
 #![deny(missing_debug_implementations)]
 
 mod element;
