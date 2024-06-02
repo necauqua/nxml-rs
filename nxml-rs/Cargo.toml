@@ -1,0 +1,23 @@
+[package]
+name = 'nxml-rs'
+description = 'Hand-written Rust noitaXML parser'
+
+version = { workspace = true }
+license = { workspace = true }
+edition = { workspace = true }
+readme = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+authors = { workspace = true }
+
+categories = ['parser-implementations']
+keywords = ['xml', 'parser']
+
+[dependencies]
+indexmap = { version = '2.2', optional = true }
+nxml-rs-macros = { workspace = true }
+thiserror = '1.0'
+
+[features]
+default = ['indexmap']
+indexmap = ['dep:indexmap']

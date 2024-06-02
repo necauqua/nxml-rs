@@ -1,4 +1,4 @@
-#![doc = include_str!("../readme.md")]
+#![doc = include_str!("../../readme.md")]
 #![deny(missing_debug_implementations)]
 
 mod element;
