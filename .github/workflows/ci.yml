@@ -43,7 +43,7 @@ jobs:
         run: cargo doc --all-features
 
   test:
-    name: Test (${{ matrix.rust.name }}
+    name: Test (${{ matrix.rust.name }})
     needs:
       - checks
     strategy:
