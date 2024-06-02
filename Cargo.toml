@@ -1,0 +1,24 @@
+[workspace]
+members = ['nxml-rs-macros']
+
+[package]
+name = 'nxml-rs'
+description = 'Hand-written Rust noitaXML parser'
+version = '0.1.0'
+license = 'MIT'
+edition = '2021'
+readme = 'readme.md'
+homepage = 'https://github.com/necauqua/nxml-rs'
+repository = 'https://github.com/necauqua/nxml-rs'
+authors = ['Anton Bulakh <him@necauq.ua>']
+categories = ['parser-implementations']
+keywords = ['xml', 'parser']
+
+[dependencies]
+nxml-rs-macros = { path = 'nxml-rs-macros' }
+indexmap = { version = '2.2', optional = true }
+thiserror = '1.0'
+
+[features]
+default = ['indexmap']
+indexmap = ['dep:indexmap']
