@@ -26,7 +26,7 @@ dependencies = [
 
 [[package]]
 name = "nxml-rs"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "indexmap",
  "nxml-rs-macros",
@@ -35,7 +35,7 @@ dependencies = [
 
 [[package]]
 name = "nxml-rs-macros"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "nxml-rs",
  "proc-macro2",
