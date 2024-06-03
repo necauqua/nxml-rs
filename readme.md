@@ -1,5 +1,10 @@
 nxml-rs
 ===
+[![Crates.io](https://img.shields.io/crates/v/nxml-rs)](https://crates.io/crates/nxml-rs)
+[![CI](https://github.com/necauqua/nxml-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/necauqua/nxml-rs/actions/workflows/ci.yml)
+![License](https://img.shields.io/github/license/necauqua/nxml-rs)
+[![discord link](https://img.shields.io/discord/587713408841940993)](https://google.com)
+
 nxml-rs is a [Rust rewrite](https://transitiontech.ca/random/RIIR) of
 [NXML](https://github.com/XWitchProject/NXML).
 
