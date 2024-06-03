@@ -165,7 +165,7 @@ macro_rules! dsl_impls {
                 /// # Example
                 /// ```rust
                 /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity key=\"value\" />);")]
+                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity key=\"value\"/>);")]
                 ///
                 /// assert_eq!(element.attr("key"), Some("value"));
                 /// ```
@@ -263,7 +263,7 @@ macro_rules! dsl_impls {
                 /// # Example
                 /// ```rust
                 /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity />)")]
+                #[doc = concat!("let element = ", stringify!($tpe), "::new(\"Entity\")")]
                 ///     .with_attr("key", "value");
                 ///
                 /// assert_eq!(element.to_string(), "<Entity key=\"value\"/>");
@@ -277,7 +277,7 @@ macro_rules! dsl_impls {
                 /// # Example
                 /// ```rust
                 /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity />)")]
+                #[doc = concat!("let element = ", stringify!($tpe), "::new(\"Entity\")")]
                 ///     .with_text("hello");
                 ///
                 /// assert_eq!(element.to_string(), "<Entity>hello</Entity>");
@@ -291,8 +291,8 @@ macro_rules! dsl_impls {
                 /// # Example
                 /// ```rust
                 /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity />)")]
-                #[doc = concat!("     .with_child(", stringify!($macro), "!(<Child />));")]
+                #[doc = concat!("let element = ", stringify!($tpe), "::new(\"Entity\")")]
+                #[doc = concat!("     .with_child(", stringify!($tpe), "::new(\"Child\"));")]
                 ///
                 /// assert_eq!(element.to_string(), "<Entity><Child/></Entity>");
                 /// ```
