@@ -3,7 +3,7 @@ resolver = '2'
 members = ['nxml-rs', 'nxml-rs-macros']
 
 [workspace.package]
-version = '0.3.0'
+version = '0.4.0'
 license = 'MIT'
 edition = '2021'
 readme = 'readme.md'
@@ -12,4 +12,4 @@ repository = 'https://github.com/necauqua/nxml-rs'
 authors = ['Anton Bulakh <him@necauq.ua>']
 
 [workspace.dependencies]
-nxml-rs-macros = { path = 'nxml-rs-macros', version = '0.3.0' }
+nxml-rs-macros = { path = 'nxml-rs-macros', version = '0.4.0' }

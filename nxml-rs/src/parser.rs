@@ -8,27 +8,27 @@ use crate::{
 };
 
 #[derive(Debug, Error)]
-pub enum NxmlErr<'s> {
+pub enum NxmlErr {
     #[error("No closing '>' found for ending element </{element}>")]
-    NoClosingSymbolFound { element: &'s str },
+    NoClosingSymbolFound { element: String },
     #[error("Couldn't find a '<' to start parsing with")]
     NoOpeningSymbolFound,
     #[error(
         "Closing element is in wrong order. Expected '</{expected}>', but instead got '{}'", got.as_str()
     )]
-    MismatchedClosingTag { expected: &'s str, got: Token<'s> },
+    MismatchedClosingTag { expected: String, got: String },
     #[error("parsing tag '{tag}', attribute '{attribute}' - expected '='")]
-    MissingEqualsSign { tag: &'s str, attribute: &'s str },
+    MissingEqualsSign { tag: String, attribute: String },
     #[error("parsing tag '{tag}', attribute '{attribute}' - expected a \"string\" after =, but none found")]
-    MissingAttributeValue { tag: &'s str, attribute: &'s str },
+    MissingAttributeValue { tag: String, attribute: String },
     #[error("Expected a name of the element after <")]
     MissingElementName,
 }
 
 #[derive(Debug, Error)]
 #[error("{err} [{at}]")]
-pub struct NxmlError<'s> {
-    pub err: NxmlErr<'s>,
+pub struct NxmlError {
+    pub err: NxmlErr,
     pub at: Position,
 }
 
@@ -45,7 +45,7 @@ pub fn parse_lenient(s: &str) -> (ElementRef, Vec<NxmlError>) {
 #[derive(Debug)]
 struct Parser<'s> {
     tokenizer: Tokenizer<'s>,
-    errors: Vec<NxmlError<'s>>,
+    errors: Vec<NxmlError>,
     lenient: bool,
 }
 
@@ -63,7 +63,7 @@ impl<'s> Parser<'s> {
         self
     }
 
-    fn report(&mut self, err: NxmlErr<'s>) -> Result<(), NxmlError<'s>> {
+    fn report(&mut self, err: NxmlErr) -> Result<(), NxmlError> {
         let error = NxmlError {
             err,
             at: self.tokenizer.position(),
@@ -75,11 +75,11 @@ impl<'s> Parser<'s> {
         Err(error)
     }
 
-    fn parse(&mut self) -> Result<ElementRef<'s>, NxmlError<'s>> {
+    fn parse(&mut self) -> Result<ElementRef<'s>, NxmlError> {
         self.parse_inner(false)
     }
 
-    fn parse_inner(&mut self, skip_opening_tag: bool) -> Result<ElementRef<'s>, NxmlError<'s>> {
+    fn parse_inner(&mut self, skip_opening_tag: bool) -> Result<ElementRef<'s>, NxmlError> {
         if !skip_opening_tag && !matches!(self.tokenizer.next_token(), Token::OpenLess) {
             self.report(NxmlErr::NoOpeningSymbolFound)?;
         }
@@ -107,16 +107,16 @@ impl<'s> Parser<'s> {
                 Token::String(name) => {
                     let Token::Equal = self.tokenizer.next_token() else {
                         self.report(NxmlErr::MissingEqualsSign {
-                            tag: element.name,
-                            attribute: name,
+                            tag: element.name.to_owned(),
+                            attribute: name.to_owned(),
                         })?;
                         continue;
                     };
 
                     let Token::String(value) = self.tokenizer.next_token() else {
                         self.report(NxmlErr::MissingAttributeValue {
-                            tag: element.name,
-                            attribute: name,
+                            tag: element.name.to_owned(),
+                            attribute: name.to_owned(),
                         })?;
                         continue;
                     };
@@ -155,11 +155,13 @@ impl<'s> Parser<'s> {
                     if let Token::CloseGreater = self.tokenizer.next_token() {
                         return Ok(element);
                     }
-                    self.report(NxmlErr::NoClosingSymbolFound { element: name })?;
+                    self.report(NxmlErr::NoClosingSymbolFound {
+                        element: name.to_owned(),
+                    })?;
                 }
                 token => self.report(NxmlErr::MismatchedClosingTag {
-                    expected: element.name,
-                    got: token,
+                    expected: element.name.to_owned(),
+                    got: token.as_str().to_owned(),
                 })?,
             };
             return Ok(element);
