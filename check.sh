@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-set -e
+set -eux
 
 # not a check, technically, but eh whatever
 rustfmt +nightly **/src/**.rs
 
-cargo clippy --all-targets --all-features -- -D warnings
-cargo doc --all-features
-cargo test --all-features
+cargo check --quiet --workspace --all-targets
+cargo clippy --quiet --workspace --all-targets --all-features -- -D warnings -W clippy::all
+RUSTDOCFLAGS='-D warnings' cargo doc --quiet --workspace --all-features
+
+cargo test --quiet --workspace --all-targets --all-features
+cargo test --quiet --workspace --doc
+
