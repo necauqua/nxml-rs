@@ -3,7 +3,7 @@ nxml-rs
 [![Crates.io](https://img.shields.io/crates/v/nxml-rs)](https://crates.io/crates/nxml-rs)
 [![CI](https://github.com/necauqua/nxml-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/necauqua/nxml-rs/actions/workflows/ci.yml)
 ![License](https://img.shields.io/github/license/necauqua/nxml-rs)
-[![discord link](https://img.shields.io/discord/587713408841940993)](https://google.com)
+[![discord link](https://img.shields.io/discord/587713408841940993)](https://discord.com/invite/pZrbJNb)
 
 nxml-rs is a [Rust rewrite](https://transitiontech.ca/random/RIIR) of
 [NXML](https://github.com/XWitchProject/NXML).
@@ -95,7 +95,7 @@ assert_eq!(entity.to_string(), "<Entity><LuaComponent script_source_file=\"mods/
   for attributes. This is needed to preserve the order of attributes in the
   parsed elements.
   Enabled by default.
-- `compact_str` - Use `CompactString` from the `compact_str` crate instead of a
+- `compact_str` - Use `CompactString` from the `compact_str` crate instead of
   regular Rust `String`s in the owned element. The short string optimization
   makes total sense here as *most* element and attribute names and values will
   fit into the inlined buffer, drastically reducing the number of small
