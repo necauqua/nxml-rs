@@ -92,6 +92,12 @@ assert_eq!(entity.to_string(), "<Entity><LuaComponent script_source_file=\"mods/
 
 ### Cargo features
 - `indexmap` - Use `IndexMap` from the `indexmap` crate instead of `HashMap`
-  for attributes. This is useful if you want to preserve the order of
-  attributes in the output. Enabled by default, you can disable it to shake off
-  that one dependency if you don't care about attrubute order.
+  for attributes. This is needed to preserve the order of attributes in the
+  parsed elements.
+  Enabled by default.
+- `compact_str` - Use `CompactString` from the `compact_str` crate instead of a
+  regular Rust `String`s in the owned element. The short string optimization
+  makes total sense here as *most* element and attribute names and values will
+  fit into the inlined buffer, drastically reducing the number of small
+  allocations and indirections.
+  Enabled by default.

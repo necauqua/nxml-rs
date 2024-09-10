@@ -14,10 +14,12 @@ categories = ['parser-implementations']
 keywords = ['xml', 'parser']
 
 [dependencies]
+compact_str = { version = '0.8', optional = true }
 indexmap = { version = '2.2', optional = true }
 nxml-rs-macros = { workspace = true }
 thiserror = '1.0'
 
 [features]
-default = ['indexmap']
+default = ['indexmap', 'compact_str']
 indexmap = ['dep:indexmap']
+compact_str = ['dep:compact_str']

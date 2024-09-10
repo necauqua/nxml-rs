@@ -4,6 +4,9 @@ use std::{
     ops::{Div, Rem},
 };
 
+#[cfg(feature = "compact_str")]
+use compact_str::{CompactString, ToCompactString};
+
 #[cfg(feature = "indexmap")]
 type Map<K, V> = indexmap::IndexMap<K, V>;
 #[cfg(not(feature = "indexmap"))]
@@ -70,6 +73,19 @@ impl<'s> ElementRef<'s> {
     /// assert_static(owned_element);
     /// ```
     pub fn to_owned(&self) -> Element {
+        #[cfg(feature = "compact_str")]
+        return Element {
+            name: self.name.to_compact_string(),
+            attributes: self
+                .attributes
+                .iter()
+                .map(|(&k, &v)| (k.to_compact_string(), v.to_compact_string()))
+                .collect(),
+            children: self.children.iter().map(|c| c.to_owned()).collect(),
+            text_content: self.text_content.to_compact_string(),
+        };
+
+        #[cfg(not(feature = "compact_str"))]
         Element {
             name: self.name.to_owned(),
             attributes: self
@@ -83,20 +99,25 @@ impl<'s> ElementRef<'s> {
     }
 }
 
+#[cfg(feature = "compact_str")]
+type Str = compact_str::CompactString;
+#[cfg(not(feature = "compact_str"))]
+type Str = String;
+
 /// An owned XML element. Slightly easier to work with than [`ElementRef`].
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Element {
     /// The name of the element, e.g. `LuaComponent` in `<LuaComponent />`.
-    pub name: String,
+    pub name: Str,
     /// The text content of the element, e.g. `hello` in
     /// `<SomeComponent>hello</SomeComponent>`.
     ///
     /// If there are multiple text nodes, they are concatenated into a single
     /// string with spaces between them.
-    pub text_content: String,
+    pub text_content: Str,
     /// A map of element attributes, e.g. `name="comp"` in `<SomeComponent
     /// name="comp" />`, where the key is `name` and the value is `comp`.
-    pub attributes: Map<String, String>,
+    pub attributes: Map<Str, Str>,
     /// A list of child elements, e.g. [`<SomeComponent/>`,
     /// `<SomeOtherComponent/>`] in
     /// ```xml
@@ -110,6 +131,18 @@ pub struct Element {
 
 impl Element {
     /// Create a new element with the given name.
+    #[cfg(feature = "compact_str")]
+    pub fn new(name: impl ToCompactString) -> Element {
+        Element {
+            name: name.to_compact_string(),
+            attributes: Map::new(),
+            children: Vec::new(),
+            text_content: CompactString::const_new(""),
+        }
+    }
+
+    /// Create a new element with the given name.
+    #[cfg(not(feature = "compact_str"))]
     pub fn new(name: impl ToString) -> Element {
         Element {
             name: name.to_string(),
@@ -150,266 +183,276 @@ impl Element {
 #[derive(Debug)]
 pub struct Text;
 
-macro_rules! dsl_impls {
-    ($(
+macro_rules! dsl_impl {
+    (
         #[$macro:ident]
         impl $tpe:ident$(<$src:lifetime>)? {
             attr($attr_str:ty) -> $attr_str_owned:ty,
             text($text_str:ty)$(.$text_transform:ident())?,
         }
-    )*) => {
-        $(
-            impl$(<$src>)? $tpe$(<$src>)? {
+    ) => {
+        impl$(<$src>)? $tpe$(<$src>)? {
 
-                /// A shorthand for getting an attribute value.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity key=\"value\"/>);")]
-                ///
-                /// assert_eq!(element.attr("key"), Some("value"));
-                /// ```
-                pub fn attr(&self, key: &str) -> Option<&str> {
-                    self.attributes.get(key).map(|s| s.as_ref())
-                }
-
-                /// Find the first child element with the given name.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity><Child>\"hello\"</Child></Entity>);")]
-                ///
-                /// assert_eq!(element.child("Child").unwrap().text_content, "hello");
-                /// ```
-                pub fn child(&self, name: &str) -> Option<&Self> {
-                    self.children.iter().find(|c| c.name == name)
-                }
-
-                /// Find the first child element with the given name, mutable version.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let mut element = ", stringify!($macro),"!(<Entity><Child/></Entity>);")]
-                ///
-                /// element.child_mut("Child").unwrap().text_content = "world".into();
-                ///
-                /// assert_eq!(element.child("Child").unwrap().text_content, "world");
-                pub fn child_mut(&mut self, name: &str) -> Option<&mut Self> {
-                    self.children.iter_mut().find(|c| c.name == name)
-                }
-
-                /// Iterate over all child elements with the given name.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity><Child/><Other/><Child/></Entity>);")]
-                ///
-                /// assert_eq!(element.children("Child").count(), 2);
-                /// ```
-                pub fn children<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a Self> + 'a {
-                    self.children.iter().filter(move |c| c.name == name)
-                }
-
-                /// Iterate over all child elements with the given name, mutable version.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let mut element = ", stringify!($macro),"!(<Entity><Child/><Other/><Child/></Entity>);")]
-                ///
-                /// for child in element.children_mut("Child") {
-                ///    child.text_content = "text".into();
-                /// }
-                ///
-                /// assert_eq!(element.to_string(), "<Entity><Child>text</Child><Other/><Child>text</Child></Entity>");
-                /// ```
-                pub fn children_mut<'a>(
-                    &'a mut self,
-                    name: &'a str,
-                ) -> impl Iterator<Item = &'a mut Self> + 'a {
-                    self.children.iter_mut().filter(move |c| c.name == name)
-                }
-
-                /// A shorthand for setting an attribute value.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let mut element = ", stringify!($macro),"!(<Entity />);")]
-                ///
-                /// element.set_attr("key", "value");
-                ///
-                /// assert_eq!(element.to_string(), "<Entity key=\"value\"/>");
-                pub fn set_attr(&mut self, key: $attr_str, value: $attr_str) {
-                    self.attributes.insert(key$(.$text_transform())?, value$(.$text_transform())?);
-                }
-
-                /// A shorthand for removing an attribute value.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let mut element = ", stringify!($macro),"!(<Entity key=\"value\" other=\"other\" />);")]
-                ///
-                /// element.remove_attr("key");
-                ///
-                /// assert_eq!(element.to_string(), "<Entity other=\"other\"/>");
-                pub fn remove_attr(&mut self, key: &str) -> Option<$attr_str_owned> {
-                    #[cfg(feature = "indexmap")]
-                    return self.attributes.shift_remove(key);
-
-                    #[cfg(not(feature = "indexmap"))]
-                    return self.attributes.remove(key);
-                }
-
-                /// Chained version of [`set_attr`](#method.set_attr).
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($tpe), "::new(\"Entity\")")]
-                ///     .with_attr("key", "value");
-                ///
-                /// assert_eq!(element.to_string(), "<Entity key=\"value\"/>");
-                /// ```
-                pub fn with_attr(mut self, key: $attr_str, value: $attr_str) -> Self {
-                    self.set_attr(key, value);
-                    self
-                }
-
-                /// Chained shorthand for setting the text content.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($tpe), "::new(\"Entity\")")]
-                ///     .with_text("hello");
-                ///
-                /// assert_eq!(element.to_string(), "<Entity>hello</Entity>");
-                /// ```
-                pub fn with_text(mut self, text: $text_str) -> Self {
-                    self.text_content = text$(.$text_transform())?;
-                    self
-                }
-
-                /// Chained shorthand for adding a child element.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($tpe), "::new(\"Entity\")")]
-                #[doc = concat!("     .with_child(", stringify!($tpe), "::new(\"Child\"));")]
-                ///
-                /// assert_eq!(element.to_string(), "<Entity><Child/></Entity>");
-                /// ```
-                pub fn with_child(mut self, element: Self) -> Self {
-                    self.children.push(element);
-                    self
-                }
-
-                /// A customizable [`Display`] impl that pretty-prints the element.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity><Child/></Entity>);")]
-                ///
-                /// assert_eq!(element.display().indent_width(0).to_string(), "<Entity>\n<Child/>\n</Entity>");
-                /// ```
-                pub fn display(&self) -> PrettyDisplay<'_, Self> {
-                    PrettyDisplay {
-                        element: self,
-                        indent_width: 4,
-                        line_separator: "\n",
-                        autoclose: true,
-                    }
-                }
+            /// A shorthand for getting an attribute value.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let element = ", stringify!($macro),"!(<Entity key=\"value\"/>);")]
+            ///
+            /// assert_eq!(element.attr("key"), Some("value"));
+            /// ```
+            pub fn attr(&self, key: &str) -> Option<&str> {
+                self.attributes.get(key).map(|s| s.as_ref())
             }
 
-            impl<$($src,)? 'e> Div<&str> for &'e $tpe$(<$src>)? {
-                type Output = Self;
-
-                /// A chainable child element accessor
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity><Child><Grandchild>\"hello\"</Grandchild></Child></Entity>);")]
-                ///
-                /// assert_eq!(&element / "Child" / "Grandchild" % Text, "hello");
-                /// ```
-                fn div(self, rhs: &str) -> Self::Output {
-                    match self.child(rhs) {
-                        Some(child) => child,
-                        None => panic!("child element '{rhs}' not found"),
-                    }
-                }
+            /// Find the first child element with the given name.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let element = ", stringify!($macro),"!(<Entity><Child>\"hello\"</Child></Entity>);")]
+            ///
+            /// assert_eq!(element.child("Child").unwrap().text_content, "hello");
+            /// ```
+            pub fn child(&self, name: &str) -> Option<&Self> {
+                self.children.iter().find(|c| c.name == name)
             }
 
-            impl<$($src,)? 'e> Div<&str> for &'e mut $tpe$(<$src>)? {
-                type Output = Self;
-
-                /// A mutable version of the child accessor.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let mut element = ", stringify!($macro),"!(<Entity><Child><Grandchild>hello</Grandchild></Child></Entity>);")]
-                ///
-                /// (&mut element / "Child").children.clear();
-                ///
-                /// assert_eq!(element.to_string(), "<Entity><Child/></Entity>");
-                fn div(self, rhs: &str) -> Self::Output {
-                    match self.child_mut(rhs) {
-                        Some(child) => child,
-                        None => panic!("child element '{rhs}' not found"),
-                    }
-                }
+            /// Find the first child element with the given name, mutable version.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let mut element = ", stringify!($macro),"!(<Entity><Child/></Entity>);")]
+            ///
+            /// element.child_mut("Child").unwrap().text_content = "world".into();
+            ///
+            /// assert_eq!(element.child("Child").unwrap().text_content, "world");
+            pub fn child_mut(&mut self, name: &str) -> Option<&mut Self> {
+                self.children.iter_mut().find(|c| c.name == name)
             }
 
-            impl<$($src,)? 'e> Rem<&str> for &'e $tpe$(<$src>)? {
-                type Output = &'e str;
-
-                /// A shorthand for getting an attribute value.
-                /// Not index because  `&element / "child" % "key"` is better
-                /// than `&(&element / "child")["key"]`.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity key=\"value\"/>);")]
-                ///
-                /// assert_eq!(&element % "key", "value");
-                fn rem(self, rhs: &str) -> Self::Output {
-                    match self.attr(rhs) {
-                        Some(attr) => attr,
-                        None => panic!("attribute '{rhs}' not found"),
-                    }
-                }
+            /// Iterate over all child elements with the given name.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let element = ", stringify!($macro),"!(<Entity><Child/><Other/><Child/></Entity>);")]
+            ///
+            /// assert_eq!(element.children("Child").count(), 2);
+            /// ```
+            pub fn children<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a Self> + 'a {
+                self.children.iter().filter(move |c| c.name == name)
             }
 
-            impl<$($src,)? 'e> Rem<Text> for &'e $tpe$(<$src>)? {
-                type Output = &'e str;
-
-                /// A shorthand for getting the text content.
-                /// # Example
-                /// ```rust
-                /// # use nxml_rs::*;
-                #[doc = concat!("let element = ", stringify!($macro),"!(<Entity>\"hello\"</Entity>);")]
-                ///
-                /// assert_eq!(&element % Text, "hello");
-                /// ```
-                fn rem(self, _: Text) -> Self::Output {
-                    &self.text_content
-                }
+            /// Iterate over all child elements with the given name, mutable version.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let mut element = ", stringify!($macro),"!(<Entity><Child/><Other/><Child/></Entity>);")]
+            ///
+            /// for child in element.children_mut("Child") {
+            ///    child.text_content = "text".into();
+            /// }
+            ///
+            /// assert_eq!(element.to_string(), "<Entity><Child>text</Child><Other/><Child>text</Child></Entity>");
+            /// ```
+            pub fn children_mut<'a>(
+                &'a mut self,
+                name: &'a str,
+            ) -> impl Iterator<Item = &'a mut Self> + 'a {
+                self.children.iter_mut().filter(move |c| c.name == name)
             }
 
-            impl<$($src)?> Display for $tpe$(<$src>)? {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    self.display().compact().fmt(f)
+            /// A shorthand for setting an attribute value.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let mut element = ", stringify!($macro),"!(<Entity />);")]
+            ///
+            /// element.set_attr("key", "value");
+            ///
+            /// assert_eq!(element.to_string(), "<Entity key=\"value\"/>");
+            pub fn set_attr(&mut self, key: $attr_str, value: $attr_str) {
+                self.attributes.insert(key$(.$text_transform())?, value$(.$text_transform())?);
+            }
+
+            /// A shorthand for removing an attribute value.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let mut element = ", stringify!($macro),"!(<Entity key=\"value\" other=\"other\" />);")]
+            ///
+            /// element.remove_attr("key");
+            ///
+            /// assert_eq!(element.to_string(), "<Entity other=\"other\"/>");
+            pub fn remove_attr(&mut self, key: &str) -> Option<$attr_str_owned> {
+                #[cfg(feature = "indexmap")]
+                return self.attributes.shift_remove(key);
+
+                #[cfg(not(feature = "indexmap"))]
+                return self.attributes.remove(key);
+            }
+
+            /// Chained version of [`set_attr`](#method.set_attr).
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let element = ", stringify!($tpe), "::new(\"Entity\")")]
+            ///     .with_attr("key", "value");
+            ///
+            /// assert_eq!(element.to_string(), "<Entity key=\"value\"/>");
+            /// ```
+            pub fn with_attr(mut self, key: $attr_str, value: $attr_str) -> Self {
+                self.set_attr(key, value);
+                self
+            }
+
+            /// Chained shorthand for setting the text content.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let element = ", stringify!($tpe), "::new(\"Entity\")")]
+            ///     .with_text("hello");
+            ///
+            /// assert_eq!(element.to_string(), "<Entity>hello</Entity>");
+            /// ```
+            pub fn with_text(mut self, text: $text_str) -> Self {
+                self.text_content = text$(.$text_transform())?;
+                self
+            }
+
+            /// Chained shorthand for adding a child element.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let element = ", stringify!($tpe), "::new(\"Entity\")")]
+            #[doc = concat!("     .with_child(", stringify!($tpe), "::new(\"Child\"));")]
+            ///
+            /// assert_eq!(element.to_string(), "<Entity><Child/></Entity>");
+            /// ```
+            pub fn with_child(mut self, element: Self) -> Self {
+                self.children.push(element);
+                self
+            }
+
+            /// A customizable [`Display`] impl that pretty-prints the element.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let element = ", stringify!($macro),"!(<Entity><Child/></Entity>);")]
+            ///
+            /// assert_eq!(element.display().indent_width(0).to_string(), "<Entity>\n<Child/>\n</Entity>");
+            /// ```
+            pub fn display(&self) -> PrettyDisplay<'_, Self> {
+                PrettyDisplay {
+                    element: self,
+                    indent_width: 4,
+                    line_separator: "\n",
+                    autoclose: true,
                 }
             }
-        )*
+        }
+
+        impl<$($src,)? 'e> Div<&str> for &'e $tpe$(<$src>)? {
+            type Output = Self;
+
+            /// A chainable child element accessor
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let element = ", stringify!($macro),"!(<Entity><Child><Grandchild>\"hello\"</Grandchild></Child></Entity>);")]
+            ///
+            /// assert_eq!(&element / "Child" / "Grandchild" % Text, "hello");
+            /// ```
+            fn div(self, rhs: &str) -> Self::Output {
+                match self.child(rhs) {
+                    Some(child) => child,
+                    None => panic!("child element '{rhs}' not found"),
+                }
+            }
+        }
+
+        impl<$($src,)? 'e> Div<&str> for &'e mut $tpe$(<$src>)? {
+            type Output = Self;
+
+            /// A mutable version of the child accessor.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let mut element = ", stringify!($macro),"!(<Entity><Child><Grandchild>hello</Grandchild></Child></Entity>);")]
+            ///
+            /// (&mut element / "Child").children.clear();
+            ///
+            /// assert_eq!(element.to_string(), "<Entity><Child/></Entity>");
+            fn div(self, rhs: &str) -> Self::Output {
+                match self.child_mut(rhs) {
+                    Some(child) => child,
+                    None => panic!("child element '{rhs}' not found"),
+                }
+            }
+        }
+
+        impl<$($src,)? 'e> Rem<&str> for &'e $tpe$(<$src>)? {
+            type Output = &'e str;
+
+            /// A shorthand for getting an attribute value.
+            /// Not index because  `&element / "child" % "key"` is better
+            /// than `&(&element / "child")["key"]`.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let element = ", stringify!($macro),"!(<Entity key=\"value\"/>);")]
+            ///
+            /// assert_eq!(&element % "key", "value");
+            fn rem(self, rhs: &str) -> Self::Output {
+                match self.attr(rhs) {
+                    Some(attr) => attr,
+                    None => panic!("attribute '{rhs}' not found"),
+                }
+            }
+        }
+
+        impl<$($src,)? 'e> Rem<Text> for &'e $tpe$(<$src>)? {
+            type Output = &'e str;
+
+            /// A shorthand for getting the text content.
+            /// # Example
+            /// ```rust
+            /// # use nxml_rs::*;
+            #[doc = concat!("let element = ", stringify!($macro),"!(<Entity>\"hello\"</Entity>);")]
+            ///
+            /// assert_eq!(&element % Text, "hello");
+            /// ```
+            fn rem(self, _: Text) -> Self::Output {
+                &self.text_content
+            }
+        }
+
+        impl<$($src)?> Display for $tpe$(<$src>)? {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                self.display().compact().fmt(f)
+            }
+        }
     };
 }
 
-dsl_impls! {
+dsl_impl! {
     #[nxml_ref]
     impl ElementRef<'s> {
         attr(&'s str) -> &'s str,
         text(&'s str).into(),
     }
+}
 
+#[cfg(feature = "compact_str")]
+dsl_impl! {
+    #[nxml]
+    impl Element {
+        attr(impl ToCompactString) -> CompactString,
+        text(impl ToCompactString).to_compact_string(),
+    }
+}
+
+#[cfg(not(feature = "compact_str"))]
+dsl_impl! {
     #[nxml]
     impl Element {
         attr(impl ToString) -> String,
