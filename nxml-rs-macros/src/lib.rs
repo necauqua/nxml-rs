@@ -360,6 +360,7 @@ pub fn nxmls(input: TokenStream) -> TokenStream {
 
 /// Creates a list of [`ElementRef`](struct.Element.html) from an
 /// XML-like syntax.
+///
 /// This is equivalent to calling [`nxml_ref!`](macro.nxml_ref.html) multiple
 /// times inside of a `vec!` macro (or doing
 /// `nxml_refs!(<root>...</root>).children`).
