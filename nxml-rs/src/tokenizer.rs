@@ -163,7 +163,8 @@ impl<'s> Tokenizer<'s> {
                     self.skip();
                 }
                 // -1 to exclude the closing quote
-                &self.data[start_idx..self.current_index - 1]
+                // (but avoid a panic if it was EOF)
+                &self.data[start_idx..self.current_index - !self.eof() as usize]
             }),
             ch => Token::String({
                 // including the consumed ch

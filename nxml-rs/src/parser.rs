@@ -168,3 +168,14 @@ impl<'s> Parser<'s> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_single_quote() {
+        let err = parse("\"").unwrap_err();
+        assert!(matches!(err.err, NxmlErr::NoOpeningSymbolFound));
+    }
+}
